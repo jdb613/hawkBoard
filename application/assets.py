@@ -4,6 +4,7 @@ from flask_assets import Environment, Bundle
 def compile_assets(app):
     """Configure authorization asset bundles."""
     assets = Environment(app)
+    assets.config['less_bin'] = '/Users/jdb/.nvm/versions/node/v13.6.0/bin/lessc'
     Environment.auto_build = True
     Environment.debug = False
     less_bundle = Bundle('less/*.less',
