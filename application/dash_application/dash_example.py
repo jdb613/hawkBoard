@@ -81,13 +81,13 @@ def Add_Dash(server):
             is_open = False
             frame = table_prep(data)
             new_data = frame.to_dict("rows")
-            return "Nada", is_open, new_data
+            return dash.no_update, is_open, new_data
         elif active_cell and close_button:
             print('Close Callback')
             is_open = False
             frame = table_prep(data)
             new_data = frame.to_dict("rows")
-            return "Nada", is_open, new_data
+            return dash.no_update, is_open, new_data
 
 
     @dash_app.callback(
