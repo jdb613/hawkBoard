@@ -1,6 +1,6 @@
 """App config."""
 from os import environ
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 class Config:
     """Global configuration variables."""
@@ -23,3 +23,6 @@ class Config:
     STATIC_FOLDER = environ.get('STATIC_FOLDER')
     TEMPLATES_FOLDER = environ.get('TEMPLATES_FOLDER')
     COMPRESSOR_DEBUG = environ.get('COMPRESSOR_DEBUG')
+
+    #Custom Settings
+    EXCLUDE_CAT = environ.get('EXCLUDE_CATEGORIES')
