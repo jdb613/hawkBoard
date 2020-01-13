@@ -3,7 +3,7 @@
 __pycache__
 .ropeproject
 .idea
-.webassets-cache
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -17,11 +17,11 @@ __pycache__/
 .Python
 
 develop-eggs/
-dist/
+
 downloads/
 eggs/
 .eggs/
-lib/
+
 lib64/
 parts/
 sdist/
@@ -70,7 +70,7 @@ db.sqlite3-journal
 
 # Flask stuff:
 instance/
-.webassets-cache
+
 
 # Scrapy stuff:
 .scrapy
