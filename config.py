@@ -1,6 +1,6 @@
 """App config."""
 from os import environ
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 class Config:
     """Global configuration variables."""
