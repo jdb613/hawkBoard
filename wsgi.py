@@ -2,7 +2,7 @@
 from application import create_app
 
 
-def main(tst, tst1):
+def main():
     app = create_app()
     app.run()
 
