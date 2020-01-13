@@ -1,1 +1,1 @@
-web: gunicorn hawkboard:application
+web: gunicorn wsgi:main
