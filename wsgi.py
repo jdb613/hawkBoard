@@ -3,8 +3,6 @@ from application import create_app
 
 
 def main(tst, tst1):
-    print('****')
-    print(tst, tst1)
     app = create_app()
     app.run()
 

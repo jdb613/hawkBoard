@@ -26,7 +26,7 @@ def create_app():
         app = Add_Dash(app)
 
         # Compile assets
-        from application.assets import compile_assets
-        compile_assets(app)
+        # from application.assets import compile_assets
+        # compile_assets(app)
 
         return app
