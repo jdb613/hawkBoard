@@ -37,12 +37,17 @@ def Add_Dash(server):
     dash_app.index_string = html_layout
 
     # Create Dash Layout comprised of Data Tables
-    dash_app.layout = html.Div([html.Div(
-        children=get_datasets(),
-        id='dash-container'
-      ),html.Div(
-            children=modal_shell(),
-            id='modal-container')])
+    dash_app.layout = html.Div(
+        [
+            html.Div(
+                children=get_datasets(),
+                id='dash-container'
+        ),
+            html.Div(
+                children=modal_shell(),
+                id='modal-container'
+        )
+            ])
     @dash_app.callback(
                         [Output('modal_table', 'children'), Output(component_id='modal', component_property='is_open'), Output("trnsx_table", "data")],
                         [Input(component_id='trnsx_table', component_property='active_cell'),
@@ -55,28 +60,20 @@ def Add_Dash(server):
         data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(app.config.get("EXCLUDE_CAT"))).statement, db.session.bind)
         if not active_cell:
             raise PreventUpdate
-        # print(active_cell)
-        # print(is_open)
-        # print(submit_button)
-        # print(close_button)
-        # print(input_value)
+
         elif active_cell and not submit_button or close_button:
             print('Active Cell Callback')
             trnsx = pd.read_sql(db.session.query(Transaction).filter(Transaction.id == active_cell['row_id']).statement, db.session.bind)
-
             th, tb = modal_table_prep(trnsx)
             is_open = True
             frame = table_prep(data)
             new_data = frame.to_dict("rows")
             return th + tb, is_open, new_data
+
         elif active_cell and submit_button:
             print('Submit Callback')
-            print(input_value)
-            print(active_cell)
             trnsx = db.session.query(Transaction).filter(Transaction.id == active_cell['row_id']).update({'tag': input_value})
-            print(trnsx)
-            # trnsx.tag = input_value
-            # print(trnsx.tag)
+
             try:
                 db.session.commit()
                 print('Tag Updated')
@@ -87,6 +84,7 @@ def Add_Dash(server):
             frame = table_prep(data)
             new_data = frame.to_dict("rows")
             return dash.no_update, is_open, new_data
+
         elif active_cell and close_button:
             print('Close Callback')
             is_open = False
@@ -106,52 +104,8 @@ def Add_Dash(server):
             print(selection)
             return selection
 
-    # @dash_app.callback(
-    #     [Output(component_id='modal', component_property='is_open')],
-    #     [, Input(component_id='input-group-dropdown-input', component_property='value')],
-    #     [State("modal", "is_open")]
-    # )
-    # def add_selection(sub_clicks, val, is_open):
-    #     print(val)
-    #     print(sub_clicks)
-    #     print(is_open)
-    #     is_open = False
-    #     return is_open
     return dash_app.server
 
-
-
-    # def toggle_modal(sclick, cclick, children, is_open):
-    #     print('Toogle')
-    #     if sclick:
-    #         print(children)
-    #         return not is_open
-    #     elif cclick:
-    #         return is_open
-    # def toggle_modal(n1, n2, is_open):
-    #     if n1 or n2:
-    #         return not is_open
-    #     return is_open
-
-    # app.callback(
-    #         Output("modal", "is_open"),
-    #         [Input("submit", "n_clicks"), Input("close", "n_clicks")],
-    #         [State("modal", "is_open")],
-    #     )(toggle_modal)
-
-    # @dash_app.callback(
-    #     Output("modal", "is_open"),
-    #     [Input("submit", "n_clicks"),Input("close", "n_clicks"), Input(component_id='modal', component_property='children')],
-    #     [State("modal", "is_open")]
-    # )
-
-    # def toggle_modal(sclick, cclick, children, is_open):
-    #     print('Toogle')
-    #     if sclick:
-    #         print(children)
-    #         return not is_open
-    #     elif cclick:
-    #         return is_open
 
 def get_datasets():
     """Return previews of all CSVs saved in /data directory."""
@@ -168,6 +122,7 @@ def get_datasets():
     )
     arr.append(table_preview)
     return arr
+
 def modal_shell():
     arr = []
     modal = dbc.Modal([
@@ -190,17 +145,7 @@ def modal_shell():
                 ),],
             id="modal",
             is_open=False)
-    # modal = dbc.Modal(
-    #      [
-    #          dbc.ModalHeader("Your Header"),
-    #          dbc.ModalBody("This is the content of the modal...file not XLS"),
-    #          dbc.ModalFooter(
-    #              dbc.Button("Close", id="close", className="ml-auto")
-    #          ),
-    #      ],
-    #      id="modal",
-    #      is_open=False,
-    # )
+
     arr.append(modal)
     return arr
 
