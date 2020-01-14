@@ -22,7 +22,7 @@ def create_app(config_class=Config):
         db.create_all()
 
         # Import Dash application
-        from application.dash_application.dash_example import Add_Dash
+        from app.dash_application.dash_example import Add_Dash
         app = Add_Dash(app)
 
         # Compile assets

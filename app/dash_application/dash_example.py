@@ -19,7 +19,14 @@ def Add_Dash(server):
     """Create a Dash app."""
     external_stylesheets = ['https://fonts.googleapis.com/css?family=Lato',
                             'https://use.fontawesome.com/releases/v5.8.1/css/all.css',
-                            dbc.themes.BOOTSTRAP]
+                            dbc.themes.BOOTSTRAP,
+                            {
+                                "href":"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css",
+                                "rel":"stylesheet",
+                                "integrity":"sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u",
+                                "crossorigin":"anonymous"
+                            }
+                        ]
     external_scripts = ['https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js']
     dash_app = dash.Dash(server=server,
                          external_stylesheets=external_stylesheets,
