@@ -19,6 +19,7 @@ def column_prep(cols):
 
 def table_prep(frame):
   frame = frame.sort_values('date', ascending=False)
+  frame['date'] = frame['date'].dt.strftime('%m/%d/%Y')
   new_frame = frame[['id', 'date', 'name', 'amount', 'account_id', 'category', 'sub_category', 'pending', 'tag']]
   new_frame['account_id'] = new_frame['account_id'].map({'LOgERxzqrNFLPZdyNx7oFb9JwX39wzU05vVvd': 'Chase', 'vqmBXOzaoOuxNRe533YbhrV4r0NqELCmZr5vX': 'Schwab'})
 
