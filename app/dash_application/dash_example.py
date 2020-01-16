@@ -12,7 +12,7 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 from .layout import html_layout
 from app.models import db, Transaction
-from app.main.helpers import column_prep, table_prep, bubble_prep, modal_prep, tag_prep, modal_table_prep
+from app.main.helpers import column_prep, table_prep, modal_prep, tag_prep, modal_table_prep, stack_fig, stack_prep
 from flask import current_app as app
 
 
@@ -51,7 +51,11 @@ def Add_Dash(server):
             html.Div(
                 children=modal_shell(),
                 id='modal-container'
-        )
+        ),
+            dcc.Graph(
+                id='Stack',
+                figure=stack_fig(stack_prep('tag'))
+            )
             ])
     @dash_app.callback(
         [Output('modal_table', 'children'),

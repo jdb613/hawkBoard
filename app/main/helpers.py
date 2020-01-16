@@ -3,8 +3,26 @@ import dash_table.FormatTemplate as FormatTemplate
 from app import db
 from app.models import Transaction
 import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
 import dash_html_components as html
 from sqlalchemy import func
+from flask import current_app as app
+from datetime import datetime, timedelta, date
+
+
+def anyMonthStart(todayDate):
+#     todayDate = datetime.strptime(d, '%Y-%m-%d')
+    if todayDate.day < 15 and todayDate.month == 1:
+        start_year = todayDate.year -1
+        month_start = str(start_year) + '-' + str(12) + '-' + str(15)
+    elif todayDate.day < 15 and todayDate.month != 1:
+        month_start = str(todayDate.year) + '-' + str(todayDate.month - 1) + '-' + str(15)
+    else:
+        month_start = str(todayDate.year) + '-' + str(todayDate.month) + '-' + str(15)
+#     print('Start Date of Current Billing Period: ', datetime.strptime(month_start, '%Y-%m-%d').strftime('%m/%d/%y'))
+
+    return datetime.strptime(month_start, '%Y-%m-%d')
+
 
 def column_prep(cols):
   data = []
@@ -55,9 +73,26 @@ def tag_prep():
   return dropdown_menu_items
 
 
-def bubble_prep(frame):
+def stack_prep(grp):
+  tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(app.config.get("EXCLUDE_CAT"))).filter(Transaction.pending == False).statement,db.session.bind)
+  dtindex = tdf.reset_index()
+  dtindex['period'] = dtindex['date'].apply(lambda x: anyMonthStart(x))
+  grouped = dtindex.groupby([dtindex['period'],grp]).sum().reset_index()
+  pt = grouped.pivot_table(index=grp, columns='period', values='amount', fill_value=0)
+  pt = pt.sort_index(axis='columns', level='period', ascending=False)
+  return pt
 
-  return None
+def stack_fig(data):
+  traces = [go.Bar(x=row.keys(),
+             y=row.values,
+             name=index)
+      for index, row in data.iterrows()]
+
+  stack_fig = go.Figure(data=traces, layout=go.Layout(title=go.layout.Title(text="Monthly Stack")))
+  stack_fig.update_layout(barmode='stack', bargap=0.15, xaxis=dict(title='Date', tickangle=90, tickfont=dict(size=10), categoryorder='trace'
+      ))
+
+  return stack_fig
 
 # dbc.Badge("Info", pill=True, color="info", className="mr-1")
 # dbc.DropdownMenuItem("Deep thought", id="dropdown-menu-item-1"),
