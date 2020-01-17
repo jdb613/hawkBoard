@@ -3,15 +3,65 @@ import dash_table.FormatTemplate as FormatTemplate
 from app import db
 from app.models import Transaction
 import dash_bootstrap_components as dbc
+import dash_core_components as dcc
 import plotly.graph_objects as go
 import dash_html_components as html
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from flask import current_app as app
 from datetime import datetime, timedelta, date
+from dateutil.relativedelta import relativedelta
+import numpy as np
+import re
+import math
+import ast
+# from scipy import stats
 
+
+
+def dt_range(flag):
+    tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).statement,db.session.bind)
+    cur_date = tdf['date'].min().date()
+    end = tdf['date'].max().date()
+    marks = dict()
+    count = 0
+    while cur_date < end:
+        marks.update({count:{'label': cur_date.strftime('%m/%y')}})
+        # marks[count]:{'label': cur_date.strftime('%m/%y')}
+        cur_date += relativedelta(months=1)
+        count += 1
+    if flag == 'list':
+        print('marks: ', marks)
+        return marks
+    elif flag == 'end':
+        print('end: ', count -1)
+        return count -1
+
+def rangeSlider(flag):
+    tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).statement,db.session.bind)
+    cur_date = tdf['date'].min().date()
+    end = tdf['date'].max().date()
+    marks = dict()
+    count = 0
+    while end > cur_date:
+        marks.update({count:{'label': end.strftime('%m/%y')}})
+        # marks[count]:{'label': cur_date.strftime('%m/%y')}
+        end -= relativedelta(months=1)
+        count += 1
+    slider = dcc.Slider(
+                    id="range_slider",
+                    min=0,
+                    max=count - 1,
+                    value=0,
+                    marks=marks
+                )
+    if flag == 'figure':
+      return slider
+    elif flag == 'data':
+      return marks
 
 def anyMonthStart(todayDate):
-#     todayDate = datetime.strptime(d, '%Y-%m-%d')
+    if isinstance(todayDate, str):
+      todayDate = datetime.strptime(todayDate, '%Y-%m-%d')
     if todayDate.day < 15 and todayDate.month == 1:
         start_year = todayDate.year -1
         month_start = str(start_year) + '-' + str(12) + '-' + str(15)
@@ -38,7 +88,7 @@ def column_prep(cols):
 def table_prep(frame):
   frame = frame.sort_values('date', ascending=False)
   frame['date'] = frame['date'].dt.strftime('%m/%d/%Y')
-  new_frame = frame[['id', 'date', 'name', 'amount', 'account_id', 'category', 'sub_category', 'pending', 'tag']]
+  new_frame = frame[['id', 'date', 'name', 'amount', 'tag', 'category', 'sub_category', 'pending', 'account_id']]
   new_frame['account_id'] = new_frame['account_id'].map({'LOgERxzqrNFLPZdyNx7oFb9JwX39wzU05vVvd': 'Chase', 'vqmBXOzaoOuxNRe533YbhrV4r0NqELCmZr5vX': 'Schwab'})
 
   return new_frame
@@ -74,7 +124,7 @@ def tag_prep():
 
 
 def stack_prep(grp):
-  tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(app.config.get("EXCLUDE_CAT"))).filter(Transaction.pending == False).statement,db.session.bind)
+  tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).statement,db.session.bind)
   dtindex = tdf.reset_index()
   dtindex['period'] = dtindex['date'].apply(lambda x: anyMonthStart(x))
   grouped = dtindex.groupby([dtindex['period'],grp]).sum().reset_index()
@@ -87,12 +137,74 @@ def stack_fig(data):
              y=row.values,
              name=index)
       for index, row in data.iterrows()]
-
   stack_fig = go.Figure(data=traces, layout=go.Layout(title=go.layout.Title(text="Monthly Stack")))
-  stack_fig.update_layout(barmode='stack', bargap=0.15, xaxis=dict(title='Date', tickangle=90, tickfont=dict(size=10), categoryorder='trace'
-      ))
+  stack_fig.update_layout(barmode='stack', bargap=0.15, xaxis=dict(title='Date', tickangle=90, tickfont=dict(size=10), categoryorder='trace'))
 
   return stack_fig
+
+def bubble_prep(grp, start):
+  print('Bubble Prep')
+  end = start + relativedelta(months=1)
+  print(start, end)
+  data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).filter(and_(Transaction.date < end.strftime('%Y-%m-%d'), Transaction.date >= start.strftime('%Y-%m-%d'))).statement, db.session.bind)
+  tdf = data.set_index('date')
+  print('Data Result: ', len(data))
+
+  hover_text = []
+  bubble_size = []
+
+  for index, row in tdf.iterrows():
+      hover_text.append((
+                        'Name: {name}<br>'+
+                        'Amount: {amount}<br>'+
+                        'Category: {tag}<br>'+
+                        'Sub-Category: {sub_category}<br>'+
+                        'Account: {account_id}').format(
+                                              name=row['name'],
+                                              amount=row['amount'],
+                                              tag=row['tag'],
+                                              sub_category=row['sub_category'],
+                                              account_id=row['account_id']))
+      if row['amount'] < 0:
+          bubble_size.append(math.sqrt(row['amount'] * -1))
+      else:
+          bubble_size.append(math.sqrt(row['amount']))
+
+  tdf['text'] = hover_text
+  tdf['size'] = bubble_size
+  sizeref = 2.*max(tdf['size'])/(100**2)
+
+  # Dictionary with dataframes for each continent
+  categories = tdf['tag'].unique()
+  category_data = {cat:tdf.query("tag == '%s'" %cat) for cat in categories}
+
+  fig = go.Figure()
+
+  for category_name, info in category_data.items():
+      fig.add_trace(go.Scatter(
+          x=info.index, y=info['tag'],
+          name=category_name, text=info['text'],
+          marker_size=info['size'],
+          ))
+
+  fig.update_traces(mode='markers', marker=dict(sizemode='area',
+                                                sizeref=sizeref, line_width=2))
+  fig.update_layout(
+      title='Transactions',
+      xaxis=dict(
+          title='Date',
+          gridcolor='white',
+          gridwidth=2,
+      ),
+      yaxis=dict(
+          title='Amount',
+          gridcolor='white',
+          gridwidth=2,
+      ),
+      paper_bgcolor='rgb(243, 243, 243)',
+      plot_bgcolor='rgb(243, 243, 243)',
+  )
+  return fig
 
 # dbc.Badge("Info", pill=True, color="info", className="mr-1")
 # dbc.DropdownMenuItem("Deep thought", id="dropdown-menu-item-1"),

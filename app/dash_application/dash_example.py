@@ -1,19 +1,22 @@
 """Create a Dash app within a Flask app."""
 from pathlib import Path
+from datetime import datetime, timedelta, date
+from dateutil.relativedelta import relativedelta
 import dash
 import dash_table
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
-from sqlalchemy import func
+from sqlalchemy import func, and_
 import dash_table.FormatTemplate as FormatTemplate
 from dash.exceptions import PreventUpdate
 from dash.dependencies import Input, Output, State
 import pandas as pd
 from .layout import html_layout
 from app.models import db, Transaction
-from app.main.helpers import column_prep, table_prep, modal_prep, tag_prep, modal_table_prep, stack_fig, stack_prep
+from app.main.helpers import column_prep, table_prep, modal_prep, tag_prep, modal_table_prep, stack_fig, stack_prep, dt_range, rangeSlider, anyMonthStart, bubble_prep
 from flask import current_app as app
+import ast
 
 
 
@@ -32,6 +35,8 @@ def Add_Dash(server):
 
     # Override the underlying HTML template
     dash_app.index_string = html_layout
+    print('Exclude: ', app.config.get("EXCLUDE_CAT"))
+    print(type(ast.literal_eval(app.config.get("EXCLUDE_CAT"))))
     # dash_app.css.config.serve_locally = True
     # dash_app.scripts.config.serve_locally = True
     # Create Dash Layout comprised of Data Tables
@@ -45,6 +50,9 @@ def Add_Dash(server):
             ),
             html.Hr(),
             html.Div(
+                    rangeSlider('figure')
+                    ),
+            html.Div(
                 children=get_datasets(),
                 id='dash-container'
         ),
@@ -55,26 +63,33 @@ def Add_Dash(server):
             dcc.Graph(
                 id='Stack',
                 figure=stack_fig(stack_prep('tag'))
+            ),
+            dcc.Graph(
+                id='Bubble',
+                figure=bubble_prep('tag', anyMonthStart(date.today()))
             )
             ])
+
     @dash_app.callback(
         [Output('modal_table', 'children'),
         Output(component_id='modal', component_property='is_open'),
         Output(component_id='dash-container', component_property='children'),
         Output(component_id='alert', component_property='children'),
         Output(component_id='alert', component_property='is_open'),
-        Output(component_id='modal-container', component_property='children')],
+        Output(component_id='modal-container', component_property='children'),
+        Output(component_id='Bubble', component_property='figure')],
         [Input(component_id='trnsx_table', component_property='active_cell'),
          Input(component_id='tag-dropdown', component_property='value'),
          Input(component_id='tag-input', component_property='value'),
          Input(component_id='apply_tag', component_property='value'),
         Input(component_id='submit', component_property='n_clicks'),
-        Input(component_id='close', component_property='n_clicks')],
+        Input(component_id='close', component_property='n_clicks'),
+        Input(component_id='range_slider', component_property='value')],
         # Input(component_id='input-group-dropdown-input', component_property='value'),
         # Input(component_id='check_list', component_property='value')],
         [State("modal", "is_open")]
         )
-    def get_active_cell(active_cell, drop_down, tag_input, apply_tag, submit_button, close_button, is_open):
+    def get_active_cell(active_cell, drop_down, tag_input, apply_tag, submit_button, close_button, slider, is_open):
         print('Active Cell: ', active_cell)
         print('Input Value: ', drop_down)
         print('Check List: ', tag_input)
@@ -82,11 +97,34 @@ def Add_Dash(server):
         print('Is Open: ', is_open)
         print('Submit: ', submit_button)
         print('Close: ', close_button)
-        if not active_cell:
-            print('No Cell Selection')
+        print('Slider: ', slider)
+        if slider == 0 and not active_cell:
             raise dash.exceptions.PreventUpdate
+        if slider != 0 and not submit_button or close_button:
+            print('slider: ', slider)
+            data = rangeSlider('data')
+            i = data[slider]['label']
+            m = i.split('/')[0]
+            y = i.split('/')[1]
+            start = anyMonthStart("20%s-%s-25" % (y, m))
+            end = (start + relativedelta(months=1)).strftime('%Y-%m-%d')
+            tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).filter(and_(Transaction.date <= end, Transaction.date > start)).statement,db.session.bind)
+            frame = table_prep(tdf)
+            arr = ['Transactions']
+            table_preview = dash_table.DataTable(
+                id='trnsx_table',
+                columns=column_prep(frame.columns),
+                data=frame.to_dict("rows"),
+                row_selectable='single',
+                sort_action="native",
+                sort_mode='single',
+                page_size= 50
+            )
+            arr.append(table_preview)
+            # ******* modal table ** model open **** table * alert txt ** alrt open ***** modal data *** bubble chart****
+            return dash.no_update, dash.no_update, arr, dash.no_update, dash.no_update, dash.no_update, bubble_prep('tag', anyMonthStart(start))
 
-        elif active_cell and not submit_button or close_button:
+        if active_cell and not submit_button or close_button:
             print('Active Cell Callback')
             trnsx = pd.read_sql(db.session.query(Transaction).filter(Transaction.id == active_cell['row_id']).statement, db.session.bind)
             th, tb = modal_table_prep(trnsx)
@@ -94,7 +132,8 @@ def Add_Dash(server):
 
             # frame = table_prep(pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(app.config.get("EXCLUDE_CAT"))).statement, db.session.bind))
             # new_data = frame.to_dict("rows")
-            return th + tb, is_open, dash.no_update, dash.no_update, False, dash.no_update
+            # *** modal table *model open * table * alert txt ** alrt open ***** modal chldrn *** bubble chart****
+            return th + tb, is_open, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update
 
         elif active_cell and submit_button:
             print('Submit Callback')
@@ -116,36 +155,28 @@ def Add_Dash(server):
                 print('db error')
                 db.session.rollback()
             is_open = False
-            # frame = table_prep(pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(app.config.get("EXCLUDE_CAT"))).statement, db.session.bind))
-            # new_data = frame.to_dict("rows")
-            return dash.no_update, is_open, get_datasets(), alrt, True, modal_shell()
+            data = rangeSlider('data')
+            i = data[slider]['label']
+            m = i.split('/')[0]
+            y = i.split('/')[1]
+            start = anyMonthStart("20%s-%s-25" % (y, m))
+            # *** modal table *model open * table * alert txt ** alrt open ***** modal chldrn *** bubble chart****
+            return dash.no_update, is_open, get_datasets(), alrt, True, modal_shell(), bubble_prep('tag', anyMonthStart(start))
 
         elif active_cell and close_button:
             print('Close Callback')
             is_open = False
             alrt = 'No Updates'
-            # frame = table_prep(pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(app.config.get("EXCLUDE_CAT"))).statement, db.session.bind))
-            # new_data = frame.to_dict("rows")
-            return dash.no_update, is_open, dash.no_update, False, modal_shell()
 
-
-    # @dash_app.callback(
-    #     [Output(component_id='input-group-dropdown-input', component_property='value')],
-    #     [Input(component_id='modal_drop', component_property='children')]
-    # )
-    # def add_selection(selection):
-    #     if selection:
-    #         print(selection)
-    #         return selection
-    #     else:
-    #         raise dash.exceptions.PreventUpdate
+            # *** modal table ****model open * table ******alert txt ** **alrt open ***** modal chldrn *** bubble chart****
+            return dash.no_update, is_open, dash.no_update, dash.no_update, False, modal_shell(), dash.no_update
 
     return dash_app.server
 
 
 def get_datasets():
     """Return previews of all CSVs saved in /data directory."""
-    data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(app.config.get("EXCLUDE_CAT"))).filter(Transaction.pending == False).statement, db.session.bind)
+    data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).filter(Transaction.date >= anyMonthStart(date.today())).statement, db.session.bind)
     frame = table_prep(data)
     arr = ['Transactions']
     table_preview = dash_table.DataTable(
