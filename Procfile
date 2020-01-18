@@ -1,1 +1,1 @@
-web: gunicorn hawkadmin:app
+web: flask db upgrade; gunicorn hawkadmin:app

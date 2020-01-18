@@ -19,7 +19,8 @@ import ast
 
 
 def dt_range(flag):
-    tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).statement,db.session.bind)
+    exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
+    tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).statement,db.session.bind)
     cur_date = tdf['date'].min().date()
     end = tdf['date'].max().date()
     marks = dict()
@@ -37,7 +38,8 @@ def dt_range(flag):
         return count -1
 
 def rangeSlider(flag):
-    tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).statement,db.session.bind)
+    exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
+    tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).statement,db.session.bind)
     cur_date = tdf['date'].min().date()
     end = tdf['date'].max().date()
     marks = dict()
@@ -124,7 +126,8 @@ def tag_prep():
 
 
 def stack_prep(grp):
-  tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).statement,db.session.bind)
+  exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
+  tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).statement,db.session.bind)
   dtindex = tdf.reset_index()
   dtindex['period'] = dtindex['date'].apply(lambda x: anyMonthStart(x))
   grouped = dtindex.groupby([dtindex['period'],grp]).sum().reset_index()
@@ -143,10 +146,11 @@ def stack_fig(data):
   return stack_fig
 
 def bubble_prep(grp, start):
+  exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
   print('Bubble Prep')
   end = start + relativedelta(months=1)
   print(start, end)
-  data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).filter(and_(Transaction.date < end.strftime('%Y-%m-%d'), Transaction.date >= start.strftime('%Y-%m-%d'))).statement, db.session.bind)
+  data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).filter(and_(Transaction.date < end.strftime('%Y-%m-%d'), Transaction.date >= start.strftime('%Y-%m-%d'))).statement, db.session.bind)
   tdf = data.set_index('date')
   print('Data Result: ', len(data))
 

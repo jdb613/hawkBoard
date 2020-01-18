@@ -51,6 +51,26 @@ class Transaction(db.Model):
                       index=False,
                       unique=False,
                       nullable=False)
+    budget_id = db.Column(db.Integer, db.ForeignKey('budget.id'))
 
     def __repr__(self):
         return "<Transaction(name='%s', amount='%s', date='%s', sub_category='%s')>" % (self.name, self.amount, self.date, self.sub_category)
+
+class Budget(db.Model):
+    """Model for Budgets."""
+
+    __tablename__ = 'budget'
+    id = db.Column(db.Integer,
+                   primary_key=True)
+    name = db.Column(db.String(128),
+                      index=False,
+                      unique=False,
+                      nullable=False)
+    amount = db.Column(db.Float,
+                      index=False,
+                      unique=False,
+                      nullable=False)
+    transactions = db.relationship('Transaction', backref='budget', lazy='dynamic')
+
+    def __repr__(self):
+        return "<Transaction(name='%s', amount='%s')>" % (self.name, self.amount)

@@ -35,8 +35,10 @@ def Add_Dash(server):
 
     # Override the underlying HTML template
     dash_app.index_string = html_layout
-    print('Exclude: ', app.config.get("EXCLUDE_CAT"))
-    print(type(ast.literal_eval(app.config.get("EXCLUDE_CAT"))))
+
+    exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
+    print('Exclude: ', exclusions)
+    print(type(exclusions[0]))
     # dash_app.css.config.serve_locally = True
     # dash_app.scripts.config.serve_locally = True
     # Create Dash Layout comprised of Data Tables
@@ -90,6 +92,7 @@ def Add_Dash(server):
         [State("modal", "is_open")]
         )
     def get_active_cell(active_cell, drop_down, tag_input, apply_tag, submit_button, close_button, slider, is_open):
+        exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
         print('Active Cell: ', active_cell)
         print('Input Value: ', drop_down)
         print('Check List: ', tag_input)
@@ -108,7 +111,7 @@ def Add_Dash(server):
             y = i.split('/')[1]
             start = anyMonthStart("20%s-%s-25" % (y, m))
             end = (start + relativedelta(months=1)).strftime('%Y-%m-%d')
-            tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).filter(and_(Transaction.date <= end, Transaction.date > start)).statement,db.session.bind)
+            tdf = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).filter(and_(Transaction.date <= end, Transaction.date > start)).statement,db.session.bind)
             frame = table_prep(tdf)
             arr = ['Transactions']
             table_preview = dash_table.DataTable(
@@ -176,7 +179,9 @@ def Add_Dash(server):
 
 def get_datasets():
     """Return previews of all CSVs saved in /data directory."""
-    data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(ast.literal_eval(app.config.get("EXCLUDE_CAT")))).filter(Transaction.pending == False).filter(Transaction.date >= anyMonthStart(date.today())).statement, db.session.bind)
+    exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
+    data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).filter(Transaction.date >= anyMonthStart(date.today())).statement, db.session.bind)
+    print('data: ', len(data))
     frame = table_prep(data)
     arr = ['Transactions']
     table_preview = dash_table.DataTable(
