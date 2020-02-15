@@ -1,7 +1,7 @@
 import pandas as pd
 import dash_table.FormatTemplate as FormatTemplate
 from app import db
-from app.models import Transaction
+from app.models import Transaction, Budget
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import plotly.graph_objects as go
@@ -16,6 +16,12 @@ import math
 import ast
 # from scipy import stats
 
+def map_it(rez):
+    out = []
+    mapper = {"vqmBXOzaoOuxNRe533YbhrV4r0NqELCmZr5vX":"Schwab", "LOgERxzqrNFLPZdyNx7oFb9JwX39wzU05vVvd":"Chase" }
+    for i in range(0, len(rez)):
+        out.append({k: mapper.get(v, v) for k, v in rez[i].items()})
+    return out
 
 
 def dt_range(flag):
@@ -64,16 +70,17 @@ def rangeSlider(flag):
 def anyMonthStart(todayDate):
     if isinstance(todayDate, str):
       todayDate = datetime.strptime(todayDate, '%Y-%m-%d')
-    if todayDate.day < 15 and todayDate.month == 1:
+    if todayDate.day < 16 and todayDate.month == 1:
         start_year = todayDate.year -1
-        month_start = str(start_year) + '-' + str(12) + '-' + str(15)
-    elif todayDate.day < 15 and todayDate.month != 1:
-        month_start = str(todayDate.year) + '-' + str(todayDate.month - 1) + '-' + str(15)
+        month_start = str(start_year) + '-' + str(12) + '-' + str(16)
+    elif todayDate.day < 16 and todayDate.month != 1:
+        month_start = str(todayDate.year) + '-' + str(todayDate.month - 1) + '-' + str(16)
     else:
-        month_start = str(todayDate.year) + '-' + str(todayDate.month) + '-' + str(15)
+        month_start = str(todayDate.year) + '-' + str(todayDate.month) + '-' + str(16)
 #     print('Start Date of Current Billing Period: ', datetime.strptime(month_start, '%Y-%m-%d').strftime('%m/%d/%y'))
-
-    return datetime.strptime(month_start, '%Y-%m-%d')
+    out = datetime.strptime(month_start, '%Y-%m-%d')
+    # print('AnyMonth Result: ', out)
+    return out
 
 
 def column_prep(cols):
@@ -89,11 +96,21 @@ def column_prep(cols):
 
 def table_prep(frame):
   frame = frame.sort_values('date', ascending=False)
-  frame['date'] = frame['date'].dt.strftime('%m/%d/%Y')
+  # frame['date'] = frame['date'].dt.strftime('%m/%d/%Y')
   new_frame = frame[['id', 'date', 'name', 'amount', 'tag', 'category', 'sub_category', 'pending', 'account_id']]
   new_frame['account_id'] = new_frame['account_id'].map({'LOgERxzqrNFLPZdyNx7oFb9JwX39wzU05vVvd': 'Chase', 'vqmBXOzaoOuxNRe533YbhrV4r0NqELCmZr5vX': 'Schwab'})
 
   return new_frame
+
+def budget_columns(cols):
+  data = []
+  for c in cols:
+      if c == 'amount':
+          data.append({"name": c, "id": c,'type': 'numeric', 'format': FormatTemplate.money(0)})
+      else:
+          data.append({"name": c, "id": c})
+  data.append({'deletable': True})
+  return data
 
 def modal_prep(id):
   tags = db.session.query(Transaction.tag).distinct().all()
@@ -124,6 +141,61 @@ def tag_prep():
     dropdown_menu_items.append(list_item)
   return dropdown_menu_items
 
+def budget_prep():
+  sumz = [{"budget_id":row[0], "sum":row[1]} for row in db.session.query(Transaction.budget_id, func.sum(Transaction.amount)).filter(Transaction.date >= anyMonthStart(date.today())).group_by(Transaction.budget_id).all()]
+  keyz = [{"budget_id":row[0], "name":row[1], "amount":row[2]} for row in db.session.query(Budget.id, Budget.name, Budget.amount).distinct().all()]
+  for k in keyz:
+    for s in sumz:
+        if k['budget_id'] == s['budget_id']:
+            k['sum'] = s['sum']
+            k['net'] = k['amount'] - k['sum']
+  return pd.DataFrame(keyz)
+
+def budget_fig(data):
+  fig = go.Figure()
+  fig.add_trace(go.Bar(x=data.name.to_list(),
+                  y=data.sum.to_list(),
+                  name='Current Progress'
+                  ))
+  fig.add_trace(go.Bar(x=data.name.to_list(),
+                  y=data.amount.to_list(),
+                  name='Budgeted'
+                  ))
+  fig.update_layout(
+        title='Budget Progress',
+        xaxis=dict(
+            title='Budget',
+            tickangle=90,
+            tickfont=dict(
+            size=8)
+        ),
+        yaxis=dict(
+            title='Amount'
+        ),
+        legend=dict(
+            x=0,
+            y=1.0,
+            bgcolor='rgba(255, 255, 255, 0)',
+            bordercolor='rgba(255, 255, 255, 0)'
+        ),
+        barmode='group'
+    )
+  fig.update_yaxes(automargin=True)
+  return fig
+
+def net_fig(data):
+  fig = go.Figure()
+  fig.add_trace(go.Bar(x=data.name.to_list(), y=[x if x < 0 else 0 for x in data.net.to_list()],
+                base=[x * -1  if x < 0 else 0 for x in data.net.to_list()],
+                marker_color='crimson',
+                name='Net'))
+  fig.add_trace(go.Bar(x=data.name.to_list(),
+                       y=[x for x in data.net.to_list() if x > 0],
+                base=0,
+                marker_color='lightslategrey',
+                name='Net'
+                ))
+  return fig
 
 def stack_prep(grp):
   exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
