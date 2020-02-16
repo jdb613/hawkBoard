@@ -27,8 +27,8 @@ $(document).on('click','#untagged_table' ,function(){
                     + table_data[A]['budget_id'] +           '</td></tr>';
                   }
                   table_HTML += '</tbody>';
-    document.getElementById("masterTable").innerHTML = '&nbsp;';
-    document.getElementById("masterTable").innerHTML = table_HTML;
+                  $('#masterTable tr').remove();
+                  $('#masterTable').html(table_HTML);
     });
 
 

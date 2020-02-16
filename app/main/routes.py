@@ -34,15 +34,15 @@ def homepage_data():
       response["E"] = special
     elif request.args.get('type', '') == 'untagged':
       print("Sending Untagged Transactions to Table")
-      no_tags = db.session.query(Transaction).filter(Transaction.date >= anyMonthStart(date.today())).filter(Transaction.tag == None).order_by(desc(Transaction.date))
+      no_tags = db.session.query(Transaction).filter(Transaction.tag == None).order_by(desc(Transaction.date))
       response["A"] = map_it([t.to_dict() for t in no_tags.all()])
     elif request.args.get('type', '') == 'unbudgeted':
       print("Sending Unbudgeted Transactions to Table")
-      no_budget = db.session.query(Transaction).filter(Transaction.date >= anyMonthStart(date.today())).filter(Transaction.budget_id == None).order_by(desc(Transaction.date))
+      no_budget = db.session.query(Transaction).filter(Transaction.budget_id == None).order_by(desc(Transaction.date))
       response["A"] = map_it([t.to_dict() for t in no_budget.all()])
     elif request.args.get('type', '') == 'special':
       print("Sending Special Transactions to Table")
-      spec = db.session.query(Transaction).filter(Transaction.date >= anyMonthStart(date.today())).filter(Transaction.amount > 150).order_by(desc(Transaction.date))
+      spec = db.session.query(Transaction).filter(Transaction.amount > 150).order_by(desc(Transaction.date))
       response["A"] = map_it([t.to_dict() for t in spec.all()])
     return jsonify(response)
 
@@ -56,36 +56,40 @@ def transaction_edit():
     response['B'] = sorted([{"tag": t[0], "count": t[1]} for t in tags.all() if t[0] is not None], key=lambda k: k['count'], reverse=True)
     budgets = db.session.query(Budget.name, func.count(Budget.id)).group_by(Budget.id)
     response['C'] = sorted([{"Budget": t[0], "count": t[1]} for t in budgets.all() if t[0] is not None], key=lambda k: k['count'], reverse=True)
+
   elif request.args.get('action', '') == 'update':
     print('Updated Transaction Data from Modal :', request.args)
     data = request.args.to_dict()
     response = {}
-    if data['tag_all'] == 'Yes':
+    if data['tag'] and data['tag_all'] == 'Yes':
       print('Tagging All with: ', data['tag'])
       trnsx = db.session.query(Transaction).filter(Transaction.id == data['id']).one()
       peers = db.session.query(Transaction).filter(Transaction.name == trnsx.name).update({'tag': data['tag']})
       response['A'] = ('{} Tags Updated'.format(peers))
-    else:
+    elif data['tag'] and data['tag_all'] == 'No':
       trnsx = db.session.query(Transaction).filter(Transaction.id == data['id']).update({'tag': data['tag']})
-      response['B'] = ('{} Tags Updated'.format(trnsx))
-    if data['budget_all'] == 'Yes':
+      response['A'] = ('{} Tags Updated'.format(trnsx))
+    else:
+      response['A'] = ('No Tags Updated')
+    if data['budget'] and data['budget_all'] == 'Yes':
       print('Adding All to Budget: ', data['budget'])
       budge = db.session.query(Budget).filter(Budget.name == data['budget']).one()
       trnsx = db.session.query(Transaction).filter(Transaction.id == data['id']).one()
       peers = db.session.query(Transaction).filter(Transaction.name == trnsx.name).update({'budget_id': budge.id})
-      response['A'] = ('{} Added to Budget'.format(peers))
-    else:
+      response['B'] = ('{} Added to Budget'.format(peers))
+    elif data['budget'] and data['budget_all'] == 'No':
       budge = db.session.query(Budget).filter(Budget.name == data['budget']).one()
       trnsx = db.session.query(Transaction).filter(Transaction.id == data['id']).update({'budget_id': budge.id})
       response['B'] = ('{} Added to Budget'.format(trnsx))
+    else:
+      response['B'] = ('No Budgets Updated')
     try:
         db.session.commit()
         print('db Updated')
     except:
         print('db error')
         db.session.rollback()
-    no_tags = db.session.query(Transaction).filter(Transaction.tag == None).order_by(desc(Transaction.date)).all()
-    response["C"] = sorted([t.to_dict() for t in no_tags], key=lambda k: k['date'], reverse=True)
+
   return jsonify(response)
 
 @bp.route('/budget_edit', methods=['GET', 'POST'])

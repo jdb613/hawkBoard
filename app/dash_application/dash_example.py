@@ -40,7 +40,7 @@ def Add_Dash(server):
     exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
     print('Exclude: ', exclusions)
     print(type(exclusions[0]))
-    budget_chart_data = budget_prep()
+
     # dash_app.css.config.serve_locally = True
     # dash_app.scripts.config.serve_locally = True
     # Create Dash Layout comprised of Data Tables
@@ -71,15 +71,15 @@ def Add_Dash(server):
                 children=modal_shell(),
                 id='modal-container'
         )
-            # ,
-            # dcc.Graph(
-            #     id='budgetStack',
-            #     figure=budget_fig(budget_chart_data)
-            # ),
-            # dcc.Graph(
-            #     id='netStack',
-            #     figure=net_fig(budget_chart_data)
-            # )
+            ,
+            dcc.Graph(
+                id='budgetStack',
+                figure=budget_fig(budget_prep())
+            ),
+            dcc.Graph(
+                id='netStack',
+                figure=net_fig(budget_prep())
+            )
             ,
             dcc.Graph(
                 id='Stack',

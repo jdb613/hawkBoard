@@ -1,8 +1,16 @@
-$(document).on('click','#unbudgeted_table' ,function(){
-  console.log('Unbudgeted Transactions Requested');
-  $.getJSON('/homepage_data', {'type': 'unbudgeted'}, function(response) {
-    console.log('UnBudgeted Response: ', response);
-    var table_data = response.A;
+function reloadHome() {
+  console.log('Reloading Homepage');
+  $.getJSON('/homepage_data', {'type': 'loadup'}, function(response) {
+    console.log('Homepage Data Response: ', response);
+    document.getElementById("budget_count_container").innerHTML = '&nbsp;';
+    document.getElementById("budget_count_container").innerHTML = '<div class="huge"><b>'+ response.A + '</b></div>';
+    document.getElementById("transaction_tag_container").innerHTML = '&nbsp;';
+    document.getElementById("transaction_tag_container").innerHTML = '<div class="huge"><b>'+ response.B + '</b></div>';
+    document.getElementById("no_budget_container").innerHTML = '&nbsp;';
+    document.getElementById("no_budget_container").innerHTML = '<div class="huge"><b>'+ response.D + '</b></div>';
+    document.getElementById("special_container").innerHTML = '&nbsp;';
+    document.getElementById("special_container").innerHTML = '<div class="huge"><b>'+ response.E + '</b></div>';
+    var table_data = response.C;
     var table_HTML = '<thead><tr>'
                     + '<th>ID</th>'
                     +  '<th>Date</th>'
@@ -27,9 +35,16 @@ $(document).on('click','#unbudgeted_table' ,function(){
                     + table_data[A]['budget_id'] +           '</td></tr>';
                   }
                   table_HTML += '</tbody>';
-        $('#masterTable tr').remove();
-        $('#masterTable').html(table_HTML);
-    });
+      $('#masterTable tr').remove();
+      $('#masterTable').html(table_HTML);
 
 
-});
+  });
+}
+
+function toasta(data) {
+  for(var A=0;A<data.length;A++) {
+    console.log("Notify Test: ", data[A]);
+    toastr.info(data[A]);
+}
+}

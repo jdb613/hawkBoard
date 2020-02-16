@@ -42,31 +42,6 @@ $(document).on('click','tr' ,function(){
           console.log('No Budgets to Populate List');
         }
 
-        // if ()
-        //   $("#budgets_available").val(existingTag).find("option[value=" + existingTag +"]").attr('selected', true);
-        // } else {
-        //   console.log('No Preexisting Tag to Preselect');
-        // }
-        // if (response.A['flag']){
-        //   console.log('Checked!');
-        //   $('#flagBox').prop('checked', true);
-        // } else {
-        //   $('#flagBox').prop('checked', false);
-        // }
-        // $('#allBox').prop('checked', false);
-        // if (response.A['comments']){
-        //   console.log('Comments!', comments);
-        //   document.getElementById('comments').value = response.A['comments'];
-        // } else {
-        //   document.getElementById('comments').value ='';
-        // }
-        // if (response.A['spendEx'] == "No"){
-        //   console.log("SpendEx is Checked")
-        //   $('#exBox').prop('checked', false);
-        // } else{
-        //   $('#exBox').prop('checked', true);
-        // }
-        // $('#exAllBox').prop('checked', false);
 
 
      });

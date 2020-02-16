@@ -149,18 +149,24 @@ def budget_prep():
         if k['budget_id'] == s['budget_id']:
             k['sum'] = s['sum']
             k['net'] = k['amount'] - k['sum']
-  return pd.DataFrame(keyz)
+  out = pd.DataFrame(keyz)
+  print(out)
+  print(type(out))
+  return out
 
-def budget_fig(data):
+def budget_fig(d):
   fig = go.Figure()
-  fig.add_trace(go.Bar(x=data.name.to_list(),
-                  y=data.sum.to_list(),
-                  name='Current Progress'
-                  ))
-  fig.add_trace(go.Bar(x=data.name.to_list(),
-                  y=data.amount.to_list(),
-                  name='Budgeted'
-                  ))
+  try:
+    fig.add_trace(go.Bar(x=d['name'].to_list(),
+                    y=d['sum'].to_list(),
+                    name='Current Progress'
+                    ))
+    fig.add_trace(go.Bar(x=d['name'].to_list(),
+                    y=d['amount'].to_list(),
+                    name='Budgeted'
+                    ))
+  except:
+    pass
   fig.update_layout(
         title='Budget Progress',
         xaxis=dict(
@@ -185,16 +191,19 @@ def budget_fig(data):
 
 def net_fig(data):
   fig = go.Figure()
-  fig.add_trace(go.Bar(x=data.name.to_list(), y=[x if x < 0 else 0 for x in data.net.to_list()],
-                base=[x * -1  if x < 0 else 0 for x in data.net.to_list()],
-                marker_color='crimson',
-                name='Net'))
-  fig.add_trace(go.Bar(x=data.name.to_list(),
-                       y=[x for x in data.net.to_list() if x > 0],
-                base=0,
-                marker_color='lightslategrey',
-                name='Net'
-                ))
+  try:
+    fig.add_trace(go.Bar(x=data.name.to_list(), y=[x if x < 0 else 0 for x in data.net.to_list()],
+                  base=[x * -1  if x < 0 else 0 for x in data.net.to_list()],
+                  marker_color='crimson',
+                  name='Net'))
+    fig.add_trace(go.Bar(x=data.name.to_list(),
+                        y=[x for x in data.net.to_list() if x > 0],
+                  base=0,
+                  marker_color='lightslategrey',
+                  name='Net'
+                  ))
+  except:
+    pass
   return fig
 
 def stack_prep(grp):
@@ -248,7 +257,10 @@ def bubble_prep(grp, start):
 
   tdf['text'] = hover_text
   tdf['size'] = bubble_size
-  sizeref = 2.*max(tdf['size'])/(100**2)
+  try:
+    sizeref = 2.*max(tdf['size'])/(100**2)
+  except:
+    pass
 
   # Dictionary with dataframes for each continent
   categories = tdf['tag'].unique()
@@ -262,9 +274,11 @@ def bubble_prep(grp, start):
           name=category_name, text=info['text'],
           marker_size=info['size'],
           ))
-
-  fig.update_traces(mode='markers', marker=dict(sizemode='area',
+  try:
+    fig.update_traces(mode='markers', marker=dict(sizemode='area',
                                                 sizeref=sizeref, line_width=2))
+  except:
+    pass
   fig.update_layout(
       title='Transactions',
       xaxis=dict(
