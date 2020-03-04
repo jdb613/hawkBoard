@@ -54,8 +54,8 @@ def transaction_edit():
     response['A'] = trnsx.to_dict()
     tags = db.session.query(Transaction.tag, func.count(Transaction.id)).group_by(Transaction.tag)
     response['B'] = sorted([{"tag": t[0], "count": t[1]} for t in tags.all() if t[0] is not None], key=lambda k: k['count'], reverse=True)
-    budgets = db.session.query(Budget.name, func.count(Budget.id)).group_by(Budget.id)
-    response['C'] = sorted([{"Budget": t[0], "count": t[1]} for t in budgets.all() if t[0] is not None], key=lambda k: k['count'], reverse=True)
+    budgets = db.session.query(Budget, func.count(Transaction.id).label("num_children")).outerjoin(Transaction, Budget.transactions).group_by(Budget)
+    response['C'] = sorted([{"Budget": b.name, "count": count} for b, count in budgets.all()], key=lambda k: k['count'], reverse=True)
 
   elif request.args.get('action', '') == 'update':
     print('Updated Transaction Data from Modal :', request.args)

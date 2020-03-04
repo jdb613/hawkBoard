@@ -1,4 +1,9 @@
 $(document).on('click', '#tags_available .list-group-item', function(e) {
+  // update active class
+  var that_tag = $(this);
+  console.log('Active Tag: ', that_tag);
+  that_tag.parent().find('li').removeClass('active');
+  that_tag.addClass('active');
   //GET THE TEXT INSIDE THAT SPECIFIC LI
   var content= $(this).text().replace(/[0-9]/g, '');
   console.log('List Group Click: ', content);
@@ -8,6 +13,11 @@ $(document).on('click', '#tags_available .list-group-item', function(e) {
     });
 
 $(document).on('click', '#budgets_available .list-group-item', function(e) {
+  // update active class
+  var that_budget = $(this);
+  console.log('Active Budget: ', that_budget);
+  that_budget.parent().find('li').removeClass('active');
+  that_budget.addClass('active');
   //GET THE TEXT INSIDE THAT SPECIFIC LI
   var content= $(this).text().replace(/[0-9]/g, '');
   console.log('List Group Click: ', content);

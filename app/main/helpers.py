@@ -14,6 +14,7 @@ import numpy as np
 import re
 import math
 import ast
+import dash_table
 # from scipy import stats
 
 def map_it(rez):
@@ -295,6 +296,28 @@ def bubble_prep(grp, start):
       plot_bgcolor='rgb(243, 243, 243)',
   )
   return fig
+
+def get_datasets(s, b):
+  """Return previews of all CSVs saved in /data directory."""
+  exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
+  print("test marker")
+  if b == "all":
+      data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).filter(Transaction.date >= s).statement, db.session.bind)
+  else:
+      data = pd.read_sql(db.session.query(Transaction).join(Budget).filter(Budget.name == b).filter(Transaction.date >= s).statement, db.session.bind)
+  frame = table_prep(data)
+  arr = ['Transactions']
+  table_preview = dash_table.DataTable(
+      id='trnsx_table',
+      columns=column_prep(frame.columns),
+      data=frame.to_dict("rows"),
+      row_selectable='single',
+      sort_action="native",
+      sort_mode='single',
+      page_size= 50
+  )
+  arr.append(table_preview)
+  return arr
 
 # dbc.Badge("Info", pill=True, color="info", className="mr-1")
 # dbc.DropdownMenuItem("Deep thought", id="dropdown-menu-item-1"),

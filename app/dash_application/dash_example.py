@@ -14,10 +14,11 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 from .layout import html_layout
 from app.models import db, Transaction, Budget
-from app.main.helpers import column_prep, table_prep, modal_prep, tag_prep, modal_table_prep, stack_fig, stack_prep, dt_range, rangeSlider, anyMonthStart, bubble_prep, budget_prep, budget_fig, net_fig
+from app.main.helpers import column_prep, table_prep, modal_prep, tag_prep, modal_table_prep, stack_fig, stack_prep, dt_range, rangeSlider, anyMonthStart, bubble_prep, budget_prep, budget_fig, net_fig, get_datasets
 from .modals import modal_shell, budget_modal
 from flask import current_app as app
 import ast
+import json
 
 
 
@@ -64,23 +65,21 @@ def Add_Dash(server):
                     rangeSlider('figure')
                     ),
             html.Div(
-                children=get_datasets(),
-                id='dash-container'
-        ),
-            html.Div(
                 children=modal_shell(),
                 id='modal-container'
-        )
-            ,
+        ),
             dcc.Graph(
                 id='budgetStack',
                 figure=budget_fig(budget_prep())
             ),
+            html.Div(
+                children=[],
+                id='budget-table'
+        ),
             dcc.Graph(
                 id='netStack',
                 figure=net_fig(budget_prep())
-            )
-            ,
+            ),
             dcc.Graph(
                 id='Stack',
                 figure=stack_fig(stack_prep('tag'))
@@ -88,8 +87,30 @@ def Add_Dash(server):
             dcc.Graph(
                 id='Bubble',
                 figure=bubble_prep('tag', anyMonthStart(date.today()))
-            )
+            ),
+            html.Div(
+                children=get_datasets(anyMonthStart(date.today()), "all"),
+                id='dash-container'
+        )
             ])
+
+    @dash_app.callback(
+        Output('budget-table', 'children'),
+        [Input('budgetStack', 'clickData'),
+         Input('range_slider', 'value')])
+    def display_click_data(clickData, value):
+        if clickData:
+            marks = rangeSlider("data")
+            print("clickData: ", clickData)
+            print('marksTest: ', marks[value]['label'])
+            sdate = marks[value]['label'].split('/')
+            start = anyMonthStart('20' + sdate[1] + '-' + sdate[0] + '-01')
+            budget = clickData["points"][0]["x"]
+            budget_df = get_datasets(start, budget)
+
+            return budget_df
+        else:
+            return None
 # TAGGING
     @dash_app.callback(
         [Output('modal_table', 'children'),
@@ -270,23 +291,7 @@ def Add_Dash(server):
     return dash_app.server
 
 
-def get_datasets():
-    """Return previews of all CSVs saved in /data directory."""
-    exclusions = ast.literal_eval(app.config.get("EXCLUDE_CAT"))
-    data = pd.read_sql(db.session.query(Transaction).filter(~Transaction.category_id.in_(exclusions)).filter(Transaction.pending == False).filter(Transaction.date >= anyMonthStart(date.today())).statement, db.session.bind)
-    frame = table_prep(data)
-    arr = ['Transactions']
-    table_preview = dash_table.DataTable(
-        id='trnsx_table',
-        columns=column_prep(frame.columns),
-        data=frame.to_dict("rows"),
-        row_selectable='single',
-        sort_action="native",
-        sort_mode='single',
-        page_size= 50
-    )
-    arr.append(table_preview)
-    return arr
+
 
 
 
